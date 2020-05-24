@@ -13,7 +13,13 @@ ARRAY = list(range(ROUNDS))  # 随机(?)列表
 NAMES = {_: str(2 ** _).zfill(4) for _ in range(MAXLEVEL)}  # 将内在级别转换为显示对象的字典
 NAMES[0] = '0000'
 
-DIRECTIONS = {0: 'up', 1: 'down', 2: 'left', 3: 'right', None: 'None'}    # 换算方向的字典
+class _DIRECTIONS(list):
+    def __init__(self):
+        super().__init__(['up', 'down', 'left', 'right'])
+    def __getitem__(self, key):
+        return super().__getitem__(key) if key in range(4) else 'unknown'
+DIRECTIONS = _DIRECTIONS()      # 换算方向的字典
+
 PLAYERS = {True: 'player 0', False: 'player 1'}  # 换算先后手名称的字典
 
 PICTURES = ['nanami', 'ayase']  # 游戏图片名称
@@ -64,7 +70,6 @@ class Chessboard:
         '''
         -> 在指定位置下棋
         '''
-        self.decision[belong] = position
         belong = position[1] < COLUMNS // 2  # 重定义棋子的归属
         self.belongs[belong].append(position)
         self.board[position] = Chessman(belong, position, value)
@@ -74,7 +79,6 @@ class Chessboard:
         -> 向指定方向合并, 返回是否变化
         '''
         self.anime = []
-        self.decision[belong] = (direction,)
         def inBoard(position):  # 判断是否在棋盘内
             return position[0] in range(ROWS) and position[1] in range(COLUMNS)
         def isMine(position):   # 判断是否在领域中
@@ -83,11 +87,11 @@ class Chessboard:
             delta = [(-1,0), (1,0), (0,-1), (0,1)][direction]
             return (position[0] + delta[0], position[1] + delta[1])
         def conditionalSorted(chessmanList):  # 返回根据不同的条件排序结果
-            if direction == None: return []
             if direction == 0: return sorted(chessmanList, key = lambda x:x[0], reverse = False)
             if direction == 1: return sorted(chessmanList, key = lambda x:x[0], reverse = True )
             if direction == 2: return sorted(chessmanList, key = lambda x:x[1], reverse = False)
             if direction == 3: return sorted(chessmanList, key = lambda x:x[1], reverse = True )
+            return []
         def move_one(chessman, eaten):  # 移动一个棋子并返回是否移动, eaten是已经被吃过的棋子位置
             nowPosition = chessman.position
             nextPosition = theNext(nowPosition)
@@ -135,7 +139,7 @@ class Chessboard:
         '''
         -> 返回某方的全部棋子数值列表
         '''
-        return list(map(lambda x: self.board[x].value, self.belongs[belong]))
+        return sorted(map(lambda x: self.board[x].value, self.belongs[belong]))
 
     def getNone(self, belong):
         '''
@@ -151,6 +155,12 @@ class Chessboard:
         available = self.getNone(belong)
         if not belong: available.reverse()  # 后手序列翻转
         return available[self.array[currentRound] % len(available)] if available != [] else ()
+
+    def updateDecision(self, belong, decision):
+        '''
+        -> 更新决策
+        '''
+        self.decision[belong] = decision
 
     def getDecision(self, belong):
         '''

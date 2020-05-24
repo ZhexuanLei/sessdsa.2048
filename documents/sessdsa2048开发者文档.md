@@ -446,8 +446,8 @@ main(
       2. `output(self, currentRound, board, mode)` 给出己方的决策
          1. 参数:currentRound 当前轮数，与对战平台类变量self.currentRound遵循相同约定。
          2. 参数:board 棋盘对象的拷贝，是Chessboard类的实例。
-         3. 参数:mode 模式，mode = ′position′ 对应位置模式，mode = ′direction′ 对应方向模式。
-         4. 返回:位置模式下返回下棋的坐标，方向模式下返回合并的方向。
+         3. 参数:mode 模式，mode = ′position′ 对应位置模式，mode = ′direction′ 对应方向模式，如果 mode 为 '_position' 和 '_direction' 表示在对应模式下己方无法给出合法输出。
+         4. 返回:位置模式下返回下棋的坐标，方向模式下返回合并的方向，在己方无法给出合法输出时, 对返回值不作要求。
    3. 棋盘对象Chessboard
         
         棋盘对象提供了对棋盘的基本操作接口，参赛ai可以直接调用。接口如下
@@ -481,7 +481,7 @@ main(
 
             返回:该位置上的棋子的级别，若为空位，则返回 0
 
-        6. `getScore(self, belong)` 获取某方的全部棋子的级别列表
+        6. `getScore(self, belong)` 获取升序排列的某方的全部棋子的级别列表
 
             参数:belong某方
 
@@ -513,7 +513,9 @@ main(
             +01 +01 +04 +00 -05 -01 -04 -00\n
             +01 +01 +04 +00 -05 -01 -04 -00\0
             ```
-        11. `getTime(self)` 返回用户AI剩余思考时间, 单位为秒.
+        11. `getTime(self, belong)` 返回用户AI剩余思考时间, 单位为秒.
+        
+            参数:belong某方
 
             返回:float类型变量
 
@@ -587,3 +589,5 @@ main(
 2020.5.6 @SophieARG 修改analyser.py接口，并关联自动调试工具neattool.py
 
 2020.5.11 @HamiltonHuaji 加入chessboard类四个新接口的介绍
+
+2020.5.14 @SophieARG 修改player的output接口，增加无合法输出的mode

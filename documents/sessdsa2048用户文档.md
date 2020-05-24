@@ -6,7 +6,7 @@
 
 平台指驱动对战初始化、进行和结束, 给出盘面信息和运行环境, 并调用用户AI的决策方法, 判断胜负的程序.
 
-未定义行为指该行为中平台的行为不受规范, 可能是对战中的任何负面后果.
+未定义行为指该行为中平台的行为不受规范, 可能是对战中的任何负面后果. 若未定义行为被其它文档定义, 则遵从该定义文档.
 
 ## 用户规范
 
@@ -14,12 +14,12 @@
 
 ### 引言
 
-Sessdsa.2048 AI 是实现了包含读入本局随机数列表,根据现有的盘面和轮数输出合法的放置位置以及合并方向两个方法的命名为`Player`的类.
+Sessdsa.2048 AI 是实现了包含读入本局随机数序列,根据现有的盘面和轮数输出合法的放置位置以及合并方向两个方法的命名为`Player`的类.
 
 需要实现的成员方法具有以下原型
 
 ```Python
-def __init__(self: Player, isFirst: bool, array: List[int]) -> None:
+def __init__(self: Player, isFirst: bool, array: tuple[int]) -> None:
     pass
 def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Union[Tuple[int, int], int]:
     pass
@@ -39,7 +39,7 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
 
     Array 表示本局游戏中标志在己方棋盘中放置棋子时,决定棋子所在位置的参数.
 
-    对于先手, 计算规则为从第 0 行第0列开始,从左往右,从上到下,依次将可用位置排列,将列表中索引值本回合数的数字对可用位置总数取模,得到的结果所对应的可用位置就是本次在己方棋盘中放置棋子的位置.
+    对于先手, 计算规则为从第 0 行第0列开始,从左往右,从上到下,依次将可用位置排列,将列表中索引值本回合数的数字对可用位置总数取模,得到的结果所对应的可用位置就是本次在己方棋盘中放置棋子的位置.[源码](../src/tools/constants.py#L145)
 
     对于后手排列顺序相反, 以保证先手和后手棋子的生成位置不在同一列, 避免先手开局就能吃到后手的棋子.
 
@@ -60,7 +60,7 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
     2. `board`: 当前盘面
     3. `mode`: 当前决策内容。
 
-    在轮到某方在给定位置下棋时`mode`参数取值`"position"`, 选择合并方向时取值`"direction"`. 用户分别应当返回`Tuple[row, column]`表示下棋位置和`direction`表示合并方向.
+    在轮到某方在给定位置下棋时`mode`参数取值`"position"`, 选择合并方向时取值`"direction"`. 用户分别应当返回`Tuple[row, column]`表示下棋位置和`direction`表示合并方向. 而当`mode`参数取`"_position"`与`"_direction"`时表示在对应模式下没有可用操作，此时对返回值没有要求。
 
     1. `row`: 要下棋位置的棋盘的行号, 从上到下为0到3的`int`
     2. `column`: 要下棋位置的棋盘的列号, 从左到右为0到7的`int`
@@ -93,6 +93,10 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
     + collections
     + itertools
     + functools
+    + heapq
+    + operator
+    如果有合理需求, 可以向助教或技术组申请引入新的模块.
+
     此外, 为了阻止绕过代码检查, 以下方法被禁用
     + exec
     + eval
@@ -104,11 +108,11 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
 
 ### 棋盘状态
 
-对战中某时刻的棋盘状态由经参数`board`传给用户AI实现的`output`函数的一个`Chessboard`对象给出.
+对战中某时刻的棋盘状态由经参数`board`传给用户AI实现的`output`函数的一个`Chessboard`对象给出. 若调用或使用了棋盘除给出接口外的方法或属性, 后果自负.
 
 该对象具有以下方法
 
-   1. `__init__(self: Chessboard, array: List[int]) -> None` 初始化棋盘对象
+   1. `__init__(self: Chessboard, array: tuple[int]) -> None` 初始化棋盘对象
 
        参数:array随机序列
 
@@ -116,13 +120,13 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
 
        参数:belong操作者，position位置坐标，value 下棋的级别，缺省值为1
 
-       注:棋子的数值取以 2 为底的对数即为其级别，为int变量。
+       注:棋子的数值取以 2 为底的对数即为其级别，为int变量。若value为0, 为未定义行为.
 
    3. `move(self: Chessboard, belong: bool, direction: int) -> bool` 向指定方向合并，并且返回棋盘是否变化
 
        参数:belong操作者，direction合并方向
 
-       返回:棋盘是否变化，为bool类型
+       返回:棋盘是否变化，为bool类型. direction必须为`0,1,2,3,None`五个值之一, 否则为未定义行为.
 
    4. `getBelong(self: Chessboard, position: Tuple[int, int]) -> bool` 根据位置得到归属
 
@@ -136,11 +140,11 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
 
        返回:该位置上的棋子的级别，若为空位，则返回 0
 
-   6. `getScore(self: Chessboard, belong: bool) -> List[int]` 获取某方的全部棋子的级别列表
+   6. `getScore(self: Chessboard, belong: bool) -> List[int]` 获取升序排列的某方的全部棋子的级别列表
 
        参数:belong某方
 
-       返回:由该方全部棋子的级别构成的list类型变量
+       返回:由该方全部棋子的级别构成的list类型变量. 保证升序排列.
 
    7. `getNone(self: Chessboard, belong: bool) -> List[Tuple[int, int]]` 获取某方的全部空位的位置列表
 
@@ -152,7 +156,7 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
 
        参数:belong某方，currentRound当前轮数
 
-       返回:该方在本方领域允许下棋的位置，若不可下棋，返回空元组
+       返回:该方在本方领域允许下棋的位置，若不可下棋，返回空元组. currentRound必须处于`range(0, len(array))`内, 其中`array`是初始化棋盘时传入的随机列表. 超出该范围为未定义行为.
 
    9. `copy(self: Chessboard) -> Chessboard` 返回一个对象拷贝
 
@@ -169,7 +173,7 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
        +01 +01 +04 +00 -05 -01 -04 -00\0
        ```
 
-   11. `getTime(self: Chessboard) -> float`
+   11. `getTime(self: Chessboard, belong: bool) -> float`
 
        返回用户AI剩余思考时间, 单位为秒.
 
@@ -183,13 +187,15 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
 
    14. `getAnime(self: Chessboard) -> Any`
 
-       给出上一次棋盘合并时棋子的移动信息. 用户调用不会导致异常, 但作为undocumented api, 具体数据形式不给出保证.
+       给出上一次棋盘合并时棋子的移动信息. 用户调用不会导致异常, 但作为undocumented api, 具体数据形式不给出保证, 天梯平台上现有实现返回`None`, 请勿假定其与本地版本行为一致.
 
 ### 杂项
 
 本节列出需要注意的杂项.
 
-+ 比赛服务器的Python版本可能是3.6到3.8之间任一版本, 请注意不要使用版本限定的语法, 以节约调试时间
++ 比赛服务器的Python版本可能是`3.6`到`3.8`之间任一版本, 请注意不要使用版本限定的语法, 以节约调试时间
++ 所有可能的索引均从`0`开始, 包括但不限于`currentRound`, `position`的两个坐标等变量.
++ 单个AI的内存限制现在为`1GB`
 
 ## 有用信息
 
@@ -198,3 +204,14 @@ def output(self: Player, currentRound: int, board: Chessboard, mode: str) -> Uni
 ## 编辑历史
 
 2020.5.10 @HamiltonHuaji 创建此文档
+
+## 最近更改
+
++ getScore接口保证返回升序的列表
++ 向add接口传入的value为0为未定义行为
++ 增加了对单个AI的内存限制
++ 传入mode参数的可能值增加了`'_position'`和`'_direction'`, 表示我方AI卡住了不能下棋的两个阶段
++ 新增了允许使用的模块: `heapq`. 可以向助教或技术组申请增加允许使用的模块
++ 增加了对随机位置算法源码的引用, 以方便理解
++ 新增了允许使用的模块: `operator`
++ 明确了部分对棋盘的不合值域操作为未定义行为
